@@ -1,0 +1,2 @@
+aiogram==2.9.2
+Pillow==7.2.0
