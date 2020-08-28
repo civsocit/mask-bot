@@ -4,7 +4,7 @@ COPY ./src /app
 
 COPY ./config.py /app/config.py
 
-COPY ./logos /app/logos
+COPY ./masks /app/masks
 
 WORKDIR /app
 

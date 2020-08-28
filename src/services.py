@@ -1,36 +1,49 @@
+import datetime
 import io
+import os
+import threading
 from typing import List
+import queue
 
 from aiogram import types
 from PIL import Image, ImageDraw, ImageEnhance, ImageOps
 
 import config as cfg
+from exceptions import SourceNotFound
 
 
 async def get_results_list(message: types.Message = None,
         user: types.User = None) -> List[types.InputMediaPhoto]:
-    source = await _download_image(message=message, user=user)
+    start = datetime.datetime.now()
 
-    results = []
+    source = await _download_image(message=message, user=user)
+    path = 'masks/{}.png'
+
     i = 0
     while True:
-        path = 'logos/{}.png'.format(str(i))
-        try:
-            result = _paste_mask(Image.open(path), source)
-            response = io.BytesIO()
-            response.name = "response.png"
-            result.save(response, 'PNG')
-            response.seek(0)
-            if i == 0:
-                caption = cfg.CAPTION
-            else:
-                caption = None
-            res = types.InputMediaPhoto(response, caption=caption)
-            results.append(res)
+        if os.path.exists(path.format(str(i))):
             i += 1
-        except FileNotFoundError:
+        else:
             break
-    return results
+    
+    t_results = queue.Queue(i + 1)
+    
+    workers = [threading.Thread(target=_paste_mask_worker, args=(path, n, source, t_results)) for n in range(i)]
+    
+    for w in workers:
+        w.start()
+    
+    for w in workers:
+        w.join()
+    
+    results = []
+    while t_results.qsize():
+        results.append(types.InputMediaPhoto(t_results.get()))
+
+    results[0].caption = cfg.CAPTION
+    
+    end = datetime.datetime.now()
+    return [results, (end - start)]
 
 
 async def _download_image(message: types.Message = None,
@@ -40,8 +53,6 @@ async def _download_image(message: types.Message = None,
     if user:
         return await _download_user_profile_image(user)
     else:
-        class SourceNotFound(Exception):
-            pass
         raise SourceNotFound('Not found source for download image.')
 
 
@@ -52,8 +63,17 @@ async def _download_image_from_message(message: types.Message) -> Image:
 
 async def _download_user_profile_image(user: types.User) -> Image:
     photos = await user.get_profile_photos(limit=1)
-    return Image.open(await photos.photos[0][-1].download(io.BytesIO()))\
-        .convert('RGBA')
+    image = await photos.photos[0][-1].download(io.BytesIO())
+    return Image.open(image).convert('RGBA')
+
+
+def _paste_mask_worker(path, number, source, results):
+    result = _paste_mask(Image.open(path.format(number)), source)
+    response = io.BytesIO()
+    response.name = "response.png"
+    result.save(response, 'PNG')
+    response.seek(0)
+    results.put(response)
 
 
 def _paste_mask(logo: Image, source: Image) -> Image:
