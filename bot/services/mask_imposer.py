@@ -1,9 +1,58 @@
+import logging
+import os
+from datetime import datetime
 from io import BytesIO
-from PIL import Image, ImageEnhance, ImageOps
 from queue import Queue
 from threading import Thread
+from typing import List
 
-from config import MASK_ENHANCE as ENHANCE
+from aiogram import types
+from PIL import Image, ImageEnhance, ImageOps
+
+from bot.config import CAPTION, MASK_ENHANCE as ENHANCE, MASKS_PATH as PATH
+from bot.services import download_image
+
+
+async def impose_masks(message: types.Message = None,
+                       user: types.User = None) -> List[types.InputMediaPhoto]:
+    """Impose all masks to source image."""
+    # starting time
+    start = datetime.now()
+
+    # download source image
+    source = await download_image(message=message, user=user)
+
+    # count of masks in the folder
+    i = 0
+    while True:
+        if os.path.exists(PATH.format(str(i))):
+            i += 1
+        else:
+            break
+
+    # queue for memorize results
+    queue = Queue(i + 1)
+
+    # create workers
+    workers = [MaskImposer(PATH, n, source, queue) for n in range(i)]
+
+    for w in workers:
+        w.start()
+
+    for w in workers:
+        w.join()
+
+    # add InputMediaPhoto results to list
+    results = []
+    while queue.qsize():
+        results.append(types.InputMediaPhoto(queue.get()))
+
+    # set caption for first image
+    results[0].caption = CAPTION
+
+    logging.info('Images generation time: {}.'.format(datetime.now() - start))
+
+    return results
 
 
 class MaskImposer(Thread):
@@ -12,7 +61,7 @@ class MaskImposer(Thread):
         self._mask = Image.open(path.format(number))
         self._source = source
         self._queue = queue
-    
+
     def run(self):
         """Put result to queue as bytes string."""
         result = self._impose_mask()
@@ -27,7 +76,7 @@ class MaskImposer(Thread):
         # get min source size
         h, w = self._source.size
         min_dim = min(h, w)
-        
+
         # resize mask to min source size
         mask = self._mask.resize((min_dim, min_dim))
 

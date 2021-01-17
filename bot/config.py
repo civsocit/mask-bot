@@ -5,7 +5,7 @@ TOKEN = os.environ.get('TOKEN')
 MASKS_PATH = 'masks/{}.png'  # путь до папки с масками, лучше не трогать
 
 # Прозрачность маски
-MASK_ENHANCE = 1 # число от 0 до 1
+MASK_ENHANCE = 1  # число от 0 до 1
 
 LOGGING_LEVEL = 'info'  # CRITICAL/ERROR/WARNING/INFO/DEBUG/NOTSET
 

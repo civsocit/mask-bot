@@ -8,7 +8,7 @@ from PIL import Image
 
 
 async def download_image(message: types.Message = None,
-        user: types.User = None) -> Image:
+                         user: types.User = None) -> Image:
     """Main download function."""
     if message:
         return await _download_image_from_message(message)
