@@ -38,5 +38,9 @@ async def on_startup(dp: Dispatcher):
             types.BotCommand('help', 'информация о том, как работает бот')])
 
 
-if __name__ == '__main__':
+def main():
     executor.start_polling(dp, on_startup=on_startup)
+
+
+if __name__ == '__main__':
+    main()
