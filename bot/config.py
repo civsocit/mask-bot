@@ -1,22 +1,49 @@
 import os
+from typing import Union
 
 
-TOKEN = os.environ.get('TOKEN')
-MASKS_PATH = 'masks/{}.png'  # путь до папки с масками, лучше не трогать
+class Config:
+    _fields = ['TOKEN', 'MASKS_PATH', 'MASK_ENHANCE', 'LOG_LEVEL',
+               'HELP_TEXT', 'CAPTION']
 
-# Прозрачность маски
-MASK_ENHANCE = 1  # число от 0 до 1
+    TOKEN: str
+    MASKS_PATH: str
+    MASK_ENHANCE: int
+    LOG_LEVEL: str
+    HELP_TEXT: str
+    CAPTION: str
 
-LOGGING_LEVEL = 'info'  # CRITICAL/ERROR/WARNING/INFO/DEBUG/NOTSET
+    @staticmethod
+    def validate_log_level(log_level: str) -> str:
+        log_level = log_level.upper()
+        if log_level not in ('CRITICAL',
+                             'ERROR',
+                             'WARNING',
+                             'INFO',
+                             'DEBUG',
+                             'NOTSET'):
+            raise ValueError('Invalid logging level.')
+        return log_level
 
-# Поясняющий текст, отправляется по  командам /help и /start
-TEXT = ('Отправьте мне изображение и я наложу на него маску "Russian Lives '
-        'Matter". Или используйте /profile, чтобы наложить на ваш нынешний '
-        'аватар.\n\n'
-        '<i>Чтобы картинка смотрелась привлекательнее, скадрируйте изображние '
-        'до квадрата, поместив лицо в центр.</i>')
+    @classmethod
+    def from_env(cls):
+        dictionary = {}
+        for field in cls._fields:
+            field_result = os.getenv(field)
+            if field_result:
+                dictionary[field.lower()] = field_result
+        return cls(**dictionary)
 
-# Подпись под готовым/готовыми фото
-CAPTION = ('Время объединяться. Только все вместе, отбросив разногласия, мы '
-           'сможем победить. Становитесь Гражданами. Вступайте в '
-           '<a href="civsoc.net">Гражданское Общество</a>!')
+    def __init__(self,
+                 token: str,
+                 help_text: str,
+                 caption: str,
+                 log_level: str = 'INFO',
+                 mask_enhance: Union[int, str] = 1,
+                 masks_path: str = 'masks/{}.png'):
+        self.TOKEN = token
+        self.HELP_TEXT = help_text
+        self.CAPTION = caption
+        self.LOG_LEVEL = self.validate_log_level(log_level)
+        self.MASK_ENHANCE = int(mask_enhance)
+        self.MASKS_PATH = masks_path
