@@ -45,4 +45,21 @@ class MaskImposer(Thread):
 
         # impose mask to image as alpha layer and return result
         self._image = Image.alpha_composite(self._source, mask)
+        size = self._image.size
+        if size[0] > size[1]:
+            left = (size[0] - size[1]) / 2
+            right = size[1] + (size[0] - size[1]) / 2
+            top = 0
+            bottom = size[1]
+        elif size[0] == size[1]:
+            left = 0
+            right = size[0]
+            top = 0
+            bottom = size[1]
+        else:
+            left = 0
+            right = size[0]
+            top = (size[1] - size[0]) / 2
+            bottom = size[0] + (size[1] - size[0]) / 2
+        self._image = self._image.crop((left, top, right, bottom))
         return self._image
